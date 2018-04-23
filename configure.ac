@@ -72,9 +72,6 @@ int main() {
 AC_CHECK_FILE(/proc/net/route,[AC_DEFINE(HAVE_PROC_NET_ROUTE)],[])
 AC_CHECK_FILE(/usr/sbin/netstat,[AC_DEFINE(HAVE_USR_SBIN_NETSTAT)],[])
 AC_CHECK_FILE(/usr/bin/netstat,[AC_DEFINE(HAVE_USR_BIN_NETSTAT)],[])
-# not yet used, but FreeBSD does not use pppd anymore but user space ppp application
-AC_CHECK_FILE(/usr/sbin/pppd,[AC_DEFINE(HAVE_USR_SBIN_PPPD)],[])
-AC_CHECK_FILE(/usr/sbin/ppp,[AC_DEFINE(HAVE_USR_SBIN_PPP)],[])
 
 
 AC_OUTPUT(Makefile)

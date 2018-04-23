@@ -103,6 +103,7 @@ static int pppd_run(struct tunnel *tunnel)
 {
 	pid_t pid;
 	int amaster;
+	int has_pppd = 1;
 #ifdef HAVE_STRUCT_TERMIOS
 	struct termios termp = {
 		.c_cflag = B9600,
@@ -112,23 +113,18 @@ static int pppd_run(struct tunnel *tunnel)
 #endif
 
 
-#ifdef HAVE_USR_SBIN_PPP
-	// this is on FreeBSD
-	static const char ppp_path[] = "/usr/sbin/ppp";
-
-	if (access(ppp_path, F_OK) != 0) {
-		log_error("%s: %s.\n", ppp_path, strerror(errno));
-		return 1;
-	}
-#else
 	// traditional behavior based on pppd
 	static const char pppd_path[] = "/usr/sbin/pppd";
+	static const char ppp_path[] = "/usr/sbin/ppp";
 
 	if (access(pppd_path, F_OK) != 0) {
-		log_error("%s: %s.\n", pppd_path, strerror(errno));
-		return 1;
+		// try ppp instead, this is the case on FreeBSD
+		if (access(ppp_path, F_OK) != 0) {
+			log_error("%s: %s.\n", ppp_path, strerror(errno));
+			return 1;
+		}
+		has_pppd = 0;
 	}
-#endif
 
 #ifdef HAVE_STRUCT_TERMIOS
 	pid = forkpty(&amaster, NULL, &termp, NULL);
@@ -141,91 +137,93 @@ static int pppd_run(struct tunnel *tunnel)
 		return 1;
 	} else if (pid == 0) { // child process
 
-#ifdef HAVE_USR_SBIN_PPP
-		/*
-		 * assume there is a default configuration to start.
-		 * Support for taking options from the command line
-		 * e.g. the name of the configuration or options
-		 * to send interactively to ppp will be added later
-		 */
-		static const char *args[] = {
-			ppp_path,
-			"-background",
-			NULL // terminal null pointer required by execvp()
-		};
-#else
-		static const char *args[] = {
-			pppd_path,
-			"38400", // speed
-			":192.0.2.1", // <local_IP_address>:<remote_IP_address>
-			"noipdefault",
-			"noaccomp",
-			"noauth",
-			"default-asyncmap",
-			"nopcomp",
-			"receive-all",
-			"nodefaultroute",
-			"nodetach",
-			"lcp-max-configure", "40",
-			"mru", "1354",
-			NULL, // "usepeerdns"
-			NULL, NULL, NULL, // "debug", "logfile", pppd_log
-			NULL, NULL, // "plugin", pppd_plugin
-			NULL, NULL, // "ipparam", pppd_ipparam
-			NULL, NULL, // "ifname", pppd_ifname
-			NULL // terminal null pointer required by execvp()
-		};
+		if (has_pppd) {
+			/*
+			 * assume there is a default configuration to start.
+			 * Support for taking options from the command line
+			 * e.g. the name of the configuration or options
+			 * to send interactively to ppp will be added later
+			 */
+			static const char *args[] = {
+				ppp_path,
+				"-background",
+				NULL // terminal null pointer required by execvp()
+			};
+			close(tunnel->ssl_socket);
+			execv(args[0], (char *const *)args);
+		} else {
+			static const char *args[] = {
+				pppd_path,
+				"38400", // speed
+				":192.0.2.1", // <local_IP_address>:<remote_IP_address>
+				"noipdefault",
+				"noaccomp",
+				"noauth",
+				"default-asyncmap",
+				"nopcomp",
+				"receive-all",
+				"nodefaultroute",
+				"nodetach",
+				"lcp-max-configure", "40",
+				"mru", "1354",
+				NULL, // "usepeerdns"
+				NULL, NULL, NULL, // "debug", "logfile", pppd_log
+				NULL, NULL, // "plugin", pppd_plugin
+				NULL, NULL, // "ipparam", pppd_ipparam
+				NULL, NULL, // "ifname", pppd_ifname
+				NULL // terminal null pointer required by execvp()
+			};
 
-		if (tunnel->config->pppd_call) {
-			/* overwrite args[]: keep pppd_path, replace all
-			 * options with "call <name>" */
-			int j = 1;
-			args[j++] = "call";
-			args[j++] = tunnel->config->pppd_call;
-			while (j < ARRAY_SIZE(args))
-				args[j++] = NULL;
-		}
+			if (tunnel->config->pppd_call) {
+				/* overwrite args[]: keep pppd_path, replace all
+				 * options with "call <name>" */
+				int j = 1;
+				args[j++] = "call";
+				args[j++] = tunnel->config->pppd_call;
+				while (j < ARRAY_SIZE(args))
+					args[j++] = NULL;
+			}
 
-		// Dynamically get first NULL pointer so that changes of
-		// args above don't need code changes here
-		int i = ARRAY_SIZE(args) - 1;
-		while (args[i] == NULL)
-			i--;
-		i++;
+			// Dynamically get first NULL pointer so that changes of
+			// args above don't need code changes here
+			int i = ARRAY_SIZE(args) - 1;
+			while (args[i] == NULL)
+				i--;
+			i++;
 
-		/*
-		 * Coverity detected a defect:
-		 * 	CID 196857: Out-of-bounds write (OVERRUN)
-		 *
-		 * It is actually a false positive:
-		 * Although 'args' is  constant, Coverity is unable
-		 * to infer there are enough NULL elements in 'args'
-		 * to add the following options.
-		 */
-		if (tunnel->config->pppd_use_peerdns)
-			args[i++] = "usepeerdns";
-		if (tunnel->config->pppd_log) {
-			args[i++] = "debug";
-			args[i++] = "logfile";
-			args[i++] = tunnel->config->pppd_log;
+			/*
+			 * Coverity detected a defect:
+			 * 	CID 196857: Out-of-bounds write (OVERRUN)
+			 *
+			 * It is actually a false positive:
+			 * Although 'args' is  constant, Coverity is unable
+			 * to infer there are enough NULL elements in 'args'
+			 * to add the following options.
+			 */
+			if (tunnel->config->pppd_use_peerdns)
+				args[i++] = "usepeerdns";
+			if (tunnel->config->pppd_log) {
+				args[i++] = "debug";
+				args[i++] = "logfile";
+				args[i++] = tunnel->config->pppd_log;
+			}
+			if (tunnel->config->pppd_plugin) {
+				args[i++] = "plugin";
+				args[i++] = tunnel->config->pppd_plugin;
+			}
+			if (tunnel->config->pppd_ipparam) {
+				args[i++] = "ipparam";
+				args[i++] = tunnel->config->pppd_ipparam;
+			}
+			if (tunnel->config->pppd_ifname) {
+				args[i++] = "ifname";
+				args[i++] = tunnel->config->pppd_ifname;
+			}
+			// Assert that we didn't use up all NULL pointers above
+			assert(i < ARRAY_SIZE(args));
+			close(tunnel->ssl_socket);
+			execv(args[0], (char *const *)args);
 		}
-		if (tunnel->config->pppd_plugin) {
-			args[i++] = "plugin";
-			args[i++] = tunnel->config->pppd_plugin;
-		}
-		if (tunnel->config->pppd_ipparam) {
-			args[i++] = "ipparam";
-			args[i++] = tunnel->config->pppd_ipparam;
-		}
-		if (tunnel->config->pppd_ifname) {
-			args[i++] = "ifname";
-			args[i++] = tunnel->config->pppd_ifname;
-		}
-		// Assert that we didn't use up all NULL pointers above
-		assert(i < ARRAY_SIZE(args));
-#endif
-		close(tunnel->ssl_socket);
-		execv(args[0], (char *const *)args);
 		/*
 		 * The following call to fprintf() doesn't work, probably
 		 * because of the prior call to forkpty().
