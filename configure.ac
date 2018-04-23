@@ -24,7 +24,9 @@ AC_CHECK_LIB([pthread], [pthread_create], [], [AC_MSG_ERROR([Cannot find libpthr
 AC_CHECK_LIB([util], [forkpty], [], [AC_MSG_ERROR([Cannot find libutil.])])
 
 # Checks for header files.
-AC_CHECK_HEADERS([arpa/inet.h assert.h ctype.h errno.h fcntl.h getopt.h ifaddrs.h libutil.h limits.h mach/mach.h netdb.h net/if.h net/if_var.h netinet/in.h netinet/tcp.h net/route.h pty.h semaphore.h signal.h stdarg.h stddef.h stdint.h stdio.h stdlib.h string.h strings.h sys/ioctl.h sys/mutex.h syslog.h sys/socket.h sys/stat.h sys/time.h sys/types.h sys/wait.h termios.h unistd.h util.h])
+AC_CHECK_HEADERS([arpa/inet.h assert.h ctype.h errno.h fcntl.h getopt.h ifaddrs.h libutil.h limits.h mach/mach.h netdb.h net/if.h net/if_var.h netinet/in.h netinet/tcp.h net/route.h pty.h semaphore.h signal.h stdarg.h stddef.h stdint.h stdio.h stdlib.h string.h strings.h sys/ioctl.h sys/mutex.h syslog.h sys/socket.h sys/stat.h sys/time.h sys/types.h sys/wait.h unistd.h util.h])
+# fail without this one:
+AC_CHECK_HEADER([termios.h], [], AC_MSG_ERROR([Required header not present]))
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_C_INLINE

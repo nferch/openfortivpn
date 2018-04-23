@@ -47,9 +47,7 @@
 #elif HAVE_UTIL_H
 #include <util.h>
 #endif
-#if HAVE_TERMIOS_H
 #include <termios.h>
-#endif
 #if HAVE_LIBUTIL_H
 #include <libutil.h>
 #endif
