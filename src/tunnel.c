@@ -113,18 +113,21 @@ static int pppd_run(struct tunnel *tunnel)
 	};
 #endif
 
-#ifdef HAVE_USR_SBIN_PPPD
-	static const char pppd_path[] = "/usr/sbin/pppd";
 
-	if (access(pppd_path, F_OK) != 0) {
-		log_error("%s: %s.\n", pppd_path, strerror(errno));
-		return 1;
-	}
-#elif HAVE_USR_SBIN_PPP
+#ifdef HAVE_USR_SBIN_PPP
+	// this is on FreeBSD
 	static const char ppp_path[] = "/usr/sbin/ppp";
 
 	if (access(ppp_path, F_OK) != 0) {
 		log_error("%s: %s.\n", ppp_path, strerror(errno));
+		return 1;
+	}
+#else
+	// traditional behavior based on pppd
+	static const char pppd_path[] = "/usr/sbin/pppd";
+
+	if (access(pppd_path, F_OK) != 0) {
+		log_error("%s: %s.\n", pppd_path, strerror(errno));
 		return 1;
 	}
 #endif
@@ -139,7 +142,20 @@ static int pppd_run(struct tunnel *tunnel)
 		log_error("forkpty: %s\n", strerror(errno));
 		return 1;
 	} else if (pid == 0) { // child process
-#ifdef HAVE_USR_SBIN_PPPD
+
+#ifdef HAVE_USR_SBIN_PPP
+		/*
+		 * assume there is a default configuration to start.
+		 * Support for taking options from the command line
+		 * e.g. the name of the configuration or options
+		 * to send interactively to ppp will be added later
+		 */
+		static const char *args[] = {
+			ppp_path,
+			"-background",
+			NULL // terminal null pointer required by execvp()
+		};
+#else
 		static const char *args[] = {
 			pppd_path,
 			"38400", // speed
@@ -209,19 +225,6 @@ static int pppd_run(struct tunnel *tunnel)
 		}
 		// Assert that we didn't use up all NULL pointers above
 		assert(i < ARRAY_SIZE(args));
-
-#elif HAVE_USR_SBIN_PPP
-		/*
-		 * assume there is a default configuration to start.
-		 * Support for taking options from the command line
-		 * e.g. the name of the configuration or options
-		 * to send interactively to ppp will be added later
-		 */
-		static const char *args[] = {
-			ppp_path,
-			"-background",
-			NULL // terminal null pointer required by execvp()
-		};
 #endif
 		close(tunnel->ssl_socket);
 		execv(args[0], (char *const *)args);
