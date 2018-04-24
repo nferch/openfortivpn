@@ -137,7 +137,7 @@ static int ipv4_get_route(struct rtentry *route)
 	route_mask(route).s_addr = inet_addr("0.0.0.0");
 	route_gtw(route).s_addr = inet_addr("0.0.0.0");
 
-#ifdef HAVE_PROC_NET_ROUTE
+#if HAVE_PROC_NET_ROUTE
 	/* this is not present on Mac OSX and FreeBSD */
 	int fd;
 	// Cannot stat, mmap not lseek this special /proc file
@@ -273,7 +273,7 @@ static int ipv4_get_route(struct rtentry *route)
 	}
 	start++;
 
-#ifndef HAVE_PROC_NET_ROUTE
+#if HAVE_PROC_NET_ROUTE
 	// Skip 3 more lines from netstat output on Mac OSX and on FreeBSD
 	start = index(start, '\n');
 	start = index(++start, '\n');
@@ -290,7 +290,7 @@ static int ipv4_get_route(struct rtentry *route)
 		char *iface;
 		uint32_t dest, mask, gtw;
 		unsigned short flags;
-#ifdef HAVE_PROC_NET_ROUTE
+#if HAVE_PROC_NET_ROUTE
 		unsigned short irtt;
 		short metric;
 		unsigned long mtu, window;
@@ -435,7 +435,7 @@ static int ipv4_get_route(struct rtentry *route)
 		if (((dest & mask) == (rtdest & rtmask & mask))
 		    && (mask >= route_mask(route).s_addr)
 		    && (mask <= rtmask)) {
-#ifdef HAVE_PROC_NET_ROUTE
+#if HAVE_PROC_NET_ROUTE
 			if (((mask == route_mask(route).s_addr)
 			     && (metric <= route->rt_metric))
 			    || (rtfound == 0)
@@ -451,7 +451,7 @@ static int ipv4_get_route(struct rtentry *route)
 				strncpy(route_iface(route), iface,
 				        ROUTE_IFACE_LEN - 1);
 
-#ifdef HAVE_PROC_NET_ROUTE
+#if HAVE_PROC_NET_ROUTE
 				// we do not have these values from Mac OS X netstat,
 				// so stay with defaults denoted by values of 0
 				route->rt_metric = metric;
@@ -463,7 +463,7 @@ static int ipv4_get_route(struct rtentry *route)
 		}
 		line = strtok_r(NULL, "\n", &saveptr1);
 	}
-#ifndef HAVE_PROC_NET_ROUTE
+#if !HAVE_PROC_NET_ROUTE
 end:
 #endif
 	if (rtfound==0) {

@@ -75,7 +75,7 @@ int main() {
 # Checks for existence of specific files.
 NETSTAT_PATH=
 AC_CHECK_FILE(/proc/net/route,[
-  AC_DEFINE(HAVE_PROC_NET_ROUTE)
+  enable_proc=yes
 ],[
   AC_CHECK_FILE(/usr/sbin/netstat,[
     NETSTAT_PATH=/usr/sbin/netstat
@@ -87,12 +87,12 @@ AC_CHECK_FILE(/proc/net/route,[
 ])
 
 AC_CHECK_FILE(/usr/sbin/ppp,[
-  AC_DEFINE(HAVE_USR_SBIN_PPP)
   PPP_PATH=/usr/sbin/ppp
+  with_ppp=yes
 ],[])
 AC_CHECK_FILE(/usr/sbin/pppd,[
-  AC_DEFINE(HAVE_USR_SBIN_PPPD)
   PPP_PATH=/usr/sbin/pppd
+  with_pppd=yes
 ],[])
 
 # possibility to override default locations
@@ -106,22 +106,38 @@ AC_ARG_WITH([pppd],
         AS_HELP_STRING([--with-pppd],
                        [Set the path to the pppd daemon executable]),
         PPP_PATH="$withval"
-	AC_DEFINE(HAVE_USR_SBIN_PPPD)
+	with_pppd=yes
+	with_ppp=no
 )
 # and this is for the ppp user space client on FreeBSD
 AC_ARG_WITH([ppp],
         AS_HELP_STRING([--with-ppp],
                        [Set the path to the ppp userspace client on FreeBSD]),
         PPP_PATH="$withval"
-	AC_DEFINE(HAVE_USR_SBIN_PPP)
+	with_ppp=yes
+	with_pppd=no
 )
 
 # override for /proc/net/route detection
 AC_ARG_ENABLE([proc],
 	AS_HELP_STRING([--enable-proc],
 			[Enable route manipulations directly via /proc/net/route when cross-compiling]))
+
+
+AS_IF([test "x$with_ppp" = "xyes"], [
+	AC_DEFINE(HAVE_USR_SBIN_PPP)
+],[
+	AC_DEFINE(HAVE_USR_SBIN_PPP, 0)
+])
+AS_IF([test "x$with_pppd" = "xyes"], [
+	AC_DEFINE(HAVE_USR_SBIN_PPPD)
+],[
+	AC_DEFINE(HAVE_USR_SBIN_PPPD, 0)
+])
 AS_IF([test "x$enable_proc" = "xyes"], [
 	AC_DEFINE(HAVE_PROC_NET_ROUTE)
+],[
+	AC_DEFINE(HAVE_PROC_NET_ROUTE, 0)
 ])
 
 AC_SUBST(PPP_PATH)
