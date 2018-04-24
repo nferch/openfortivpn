@@ -73,11 +73,18 @@ int main() {
 ], AC_MSG_RESULT(no) )
 
 # Checks for existence of specific files.
-# this does not allow cross platform compiling, but it avoids many #ifdef __OS_TYPE__
-# we should allow an override configure option like --with...=...
-AC_CHECK_FILE(/proc/net/route,[AC_DEFINE(HAVE_PROC_NET_ROUTE)],[])
-AC_CHECK_FILE(/usr/sbin/netstat,[AC_DEFINE(HAVE_USR_SBIN_NETSTAT)],[])
-AC_CHECK_FILE(/usr/bin/netstat,[AC_DEFINE(HAVE_USR_BIN_NETSTAT)],[])
+NETSTAT_PATH=
+AC_CHECK_FILE(/proc/net/route,[
+  AC_DEFINE(HAVE_PROC_NET_ROUTE)
+],[
+  AC_CHECK_FILE(/usr/sbin/netstat,[
+    NETSTAT_PATH=/usr/sbin/netstat
+  ],[
+    AC_CHECK_FILE(/usr/bin/netstat,[
+      NETSTAT_PATH=/usr/bin/netstat
+    ],[])
+  ])
+])
 
 AC_CHECK_FILE(/usr/sbin/ppp,[
   AC_DEFINE(HAVE_USR_SBIN_PPP)
@@ -88,20 +95,29 @@ AC_CHECK_FILE(/usr/sbin/pppd,[
   PPP_PATH=/usr/sbin/pppd
 ],[])
 
-# possibility to override default locations, (with or without "d"
-# to distinguish between daemon executable and user space client)
+
+
+# possibility to override default locations
+AC_ARG_WITH([netstat],
+        AS_HELP_STRING([--with-netstat],
+                       [Set the path to the netstat executable on MacOSX or FreeBSD]),
+        NETSTAT_PATH="$withval"
+)
+# this is for the pppd daemon executable
 AC_ARG_WITH([pppd],
         AS_HELP_STRING([--with-pppd],
                        [Set the path to the pppd daemon executable]),
         PPP_PATH="$withval"
 	AC_DEFINE(HAVE_USR_SBIN_PPPD)
 )
+# and this is for the ppp user space client on FreeBSD
 AC_ARG_WITH([ppp],
         AS_HELP_STRING([--with-ppp],
-                       [Set the path to the ppp userspace client]),
+                       [Set the path to the ppp userspace client on FreeBSD]),
         PPP_PATH="$withval"
 	AC_DEFINE(HAVE_USR_SBIN_PPP)
 )
 AC_SUBST(PPP_PATH)
+AC_SUBST(NETSTAT_PATH)
 
 AC_OUTPUT(Makefile)

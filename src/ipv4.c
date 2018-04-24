@@ -138,7 +138,7 @@ static int ipv4_get_route(struct rtentry *route)
 	route_gtw(route).s_addr = inet_addr("0.0.0.0");
 
 #ifdef HAVE_PROC_NET_ROUTE
-	/* this is not present on Mac OSX */
+	/* this is not present on Mac OSX and FreeBSD */
 	int fd;
 	// Cannot stat, mmap not lseek this special /proc file
 	fd = open("/proc/net/route", O_RDONLY);
@@ -157,14 +157,8 @@ static int ipv4_get_route(struct rtentry *route)
 	char *saveptr3 = NULL;
 
 	// Open the command for reading
-#ifdef HAVE_USR_SBIN_NETSTAT
-	/* this is the path on Mac OSX */
-	fp = popen("/usr/sbin/netstat -f inet -rn", "r");
-#endif
-#ifdef HAVE_USR_BIN_NETSTAT
-	/* this is for BSD, output however is quite similar */
-	fp = popen("/usr/bin/netstat -f inet -rn", "r");
-#endif
+	fp = popen(NETSTAT_PATH" -f inet -rn", "r");
+
 	if (fp == NULL)
 		return ERR_IPV4_SEE_ERRNO;
 
@@ -279,8 +273,8 @@ static int ipv4_get_route(struct rtentry *route)
 	}
 	start++;
 
-#ifdef HAVE_USR_SBIN_NETSTAT
-	// Skip 3 more lines on Mac OSX
+#ifndef HAVE_PROC_NET_ROUTE
+	// Skip 3 more lines from netstat output on Mac OSX and on FreeBSD
 	start = index(start, '\n');
 	start = index(++start, '\n');
 	start = index(++start, '\n');
@@ -288,7 +282,6 @@ static int ipv4_get_route(struct rtentry *route)
 		log_debug("routing table is malformed.\n");
 		return ERR_IPV4_PROC_NET_ROUTE;
 	}
-
 #endif
 
 	// Look for the route
