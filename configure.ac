@@ -95,8 +95,6 @@ AC_CHECK_FILE(/usr/sbin/pppd,[
   PPP_PATH=/usr/sbin/pppd
 ],[])
 
-
-
 # possibility to override default locations
 AC_ARG_WITH([netstat],
         AS_HELP_STRING([--with-netstat],
@@ -117,6 +115,15 @@ AC_ARG_WITH([ppp],
         PPP_PATH="$withval"
 	AC_DEFINE(HAVE_USR_SBIN_PPP)
 )
+
+# override for /proc/net/route detection
+AC_ARG_ENABLE([proc],
+	AS_HELP_STRING([--enable-proc],
+			[Enable route manipulations directly via /proc/net/route when cross-compiling]))
+AS_IF([test "x$enable_proc" = "xyes"], [
+	AC_DEFINE(HAVE_PROC_NET_ROUTE)
+])
+
 AC_SUBST(PPP_PATH)
 AC_SUBST(NETSTAT_PATH)
 
