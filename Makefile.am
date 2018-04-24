@@ -7,7 +7,8 @@ openfortivpn_SOURCES = src/config.c src/config.h src/hdlc.c src/hdlc.h \
 		       src/tunnel.h src/main.c src/ssl.h src/xml.c \
 		       src/xml.h src/userinput.c src/userinput.h
 openfortivpn_CFLAGS = -Wall --pedantic -std=gnu99
-openfortivpn_CPPFLAGS = -DSYSCONFDIR=\"$(sysconfdir)\"
+openfortivpn_CPPFLAGS = -DSYSCONFDIR=\"$(sysconfdir)\" \
+			-DPPP_PATH=\"@PPP_PATH@\"
 
 openfortivpn_CFLAGS += $(OPENSSL_CFLAGS)
 openfortivpn_LDADD = $(OPENSSL_LIBS)

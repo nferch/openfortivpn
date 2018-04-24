@@ -79,5 +79,29 @@ AC_CHECK_FILE(/proc/net/route,[AC_DEFINE(HAVE_PROC_NET_ROUTE)],[])
 AC_CHECK_FILE(/usr/sbin/netstat,[AC_DEFINE(HAVE_USR_SBIN_NETSTAT)],[])
 AC_CHECK_FILE(/usr/bin/netstat,[AC_DEFINE(HAVE_USR_BIN_NETSTAT)],[])
 
+AC_CHECK_FILE(/usr/sbin/ppp,[
+  AC_DEFINE(HAVE_USR_SBIN_PPP)
+  PPP_PATH=/usr/sbin/ppp
+],[])
+AC_CHECK_FILE(/usr/sbin/pppd,[
+  AC_DEFINE(HAVE_USR_SBIN_PPPD)
+  PPP_PATH=/usr/sbin/pppd
+],[])
+
+# possibility to override default locations, (with or without "d"
+# to distinguish between daemon executable and user space client)
+AC_ARG_WITH([pppd],
+        AS_HELP_STRING([--with-pppd],
+                       [Set the path to the pppd daemon executable]),
+        PPP_PATH="$withval"
+	AC_DEFINE(HAVE_USR_SBIN_PPPD)
+)
+AC_ARG_WITH([ppp],
+        AS_HELP_STRING([--with-ppp],
+                       [Set the path to the ppp userspace client]),
+        PPP_PATH="$withval"
+	AC_DEFINE(HAVE_USR_SBIN_PPP)
+)
+AC_SUBST(PPP_PATH)
 
 AC_OUTPUT(Makefile)

@@ -103,7 +103,6 @@ static int pppd_run(struct tunnel *tunnel)
 {
 	pid_t pid;
 	int amaster;
-	int has_pppd = 1;
 #ifdef HAVE_STRUCT_TERMIOS
 	struct termios termp = {
 		.c_cflag = B9600,
@@ -112,16 +111,12 @@ static int pppd_run(struct tunnel *tunnel)
 	};
 #endif
 
-	static const char pppd_path[] = "/usr/sbin/pppd";
-	static const char ppp_path[] = "/usr/sbin/ppp";
-	if (access(pppd_path, F_OK) != 0) {
-		// try ppp instead, this is the case on FreeBSD
-		if (access(ppp_path, F_OK) != 0) {
-			log_error("%s: %s.\n", ppp_path, strerror(errno));
-			return 1;
-		}
-		has_pppd = 0;
+	static const char ppp_path[] = PPP_PATH;
+	if (access(ppp_path, F_OK) != 0) {
+		log_error("%s: %s.\n", ppp_path, strerror(errno));
+		return 1;
 	}
+	log_debug("ppp_path: %s\n", ppp_path);
 
 #ifdef HAVE_STRUCT_TERMIOS
 	pid = forkpty(&amaster, NULL, &termp, NULL);
@@ -134,93 +129,95 @@ static int pppd_run(struct tunnel *tunnel)
 		return 1;
 	} else if (pid == 0) { // child process
 
-		if (has_pppd) {
-			/*
-			 * assume there is a default configuration to start.
-			 * Support for taking options from the command line
-			 * e.g. the name of the configuration or options
-			 * to send interactively to ppp will be added later
-			 */
-			static const char *args[] = {
-				ppp_path,
-				"-background",
-				NULL // terminal null pointer required by execvp()
-			};
-			close(tunnel->ssl_socket);
-			execv(args[0], (char *const *)args);
-		} else {
-			static const char *args[] = {
-				pppd_path,
-				"38400", // speed
-				":192.0.2.1", // <local_IP_address>:<remote_IP_address>
-				"noipdefault",
-				"noaccomp",
-				"noauth",
-				"default-asyncmap",
-				"nopcomp",
-				"receive-all",
-				"nodefaultroute",
-				"nodetach",
-				"lcp-max-configure", "40",
-				"mru", "1354",
-				NULL, // "usepeerdns"
-				NULL, NULL, NULL, // "debug", "logfile", pppd_log
-				NULL, NULL, // "plugin", pppd_plugin
-				NULL, NULL, // "ipparam", pppd_ipparam
-				NULL, NULL, // "ifname", pppd_ifname
-				NULL // terminal null pointer required by execvp()
-			};
+#if HAVE_USR_SBIN_PPPD
+		static const char *args[] = {
+			ppp_path,
+			"38400", // speed
+			":192.0.2.1", // <local_IP_address>:<remote_IP_address>
+			"noipdefault",
+			"noaccomp",
+			"noauth",
+			"default-asyncmap",
+			"nopcomp",
+			"receive-all",
+			"nodefaultroute",
+			"nodetach",
+			"lcp-max-configure", "40",
+			"mru", "1354",
+			NULL, // "usepeerdns"
+			NULL, NULL, NULL, // "debug", "logfile", pppd_log
+			NULL, NULL, // "plugin", pppd_plugin
+			NULL, NULL, // "ipparam", pppd_ipparam
+			NULL, NULL, // "ifname", pppd_ifname
+			NULL // terminal null pointer required by execvp()
+		};
+#else
+		/*
+		 * assume there is a default configuration to start.
+		 * Support for taking options from the command line
+		 * e.g. the name of the configuration or options
+		 * to send interactively to ppp will be added later
+		 */
+		static const char *args[] = {
+			ppp_path,
+			"-background",
+			NULL, // "ipparam", reuse pppd_ipparam for "system"
+			NULL // terminal null pointer required by execvp()
+		};
+#endif
 
-			if (tunnel->config->pppd_call) {
-				/* overwrite args[]: keep pppd_path, replace all
-				 * options with "call <name>" */
-				int j = 1;
-				args[j++] = "call";
-				args[j++] = tunnel->config->pppd_call;
-				while (j < ARRAY_SIZE(args))
-					args[j++] = NULL;
-			}
-
-			// Dynamically get first NULL pointer so that changes of
-			// args above don't need code changes here
-			int i = ARRAY_SIZE(args) - 1;
-			while (args[i] == NULL)
-				i--;
-			i++;
-
-			/*
-			 * Coverity detected a defect:
-			 * 	CID 196857: Out-of-bounds write (OVERRUN)
-			 *
-			 * It is actually a false positive:
-			 * Although 'args' is  constant, Coverity is unable
-			 * to infer there are enough NULL elements in 'args'
-			 * to add the following options.
-			 */
-			if (tunnel->config->pppd_use_peerdns)
-				args[i++] = "usepeerdns";
-			if (tunnel->config->pppd_log) {
-				args[i++] = "debug";
-				args[i++] = "logfile";
-				args[i++] = tunnel->config->pppd_log;
-			}
-			if (tunnel->config->pppd_plugin) {
-				args[i++] = "plugin";
-				args[i++] = tunnel->config->pppd_plugin;
-			}
-			if (tunnel->config->pppd_ipparam) {
-				args[i++] = "ipparam";
-				args[i++] = tunnel->config->pppd_ipparam;
-			}
-			if (tunnel->config->pppd_ifname) {
-				args[i++] = "ifname";
-				args[i++] = tunnel->config->pppd_ifname;
-			}
-			// Assert that we didn't use up all NULL pointers above
-			assert(i < ARRAY_SIZE(args));
-			close(tunnel->ssl_socket);
-			execv(args[0], (char *const *)args);
+		if (tunnel->config->pppd_call) {
+			/* overwrite args[]: keep ppp_path, replace all
+			 * options with "call <name>" */
+			int j = 1;
+			args[j++] = "call";
+			args[j++] = tunnel->config->pppd_call;
+			while (j < ARRAY_SIZE(args))
+				args[j++] = NULL;
 		}
+
+		// Dynamically get first NULL pointer so that changes of
+		// args above don't need code changes here
+		int i = ARRAY_SIZE(args) - 1;
+		while (args[i] == NULL)
+			i--;
+		i++;
+
+		/*
+		 * Coverity detected a defect:
+		 * 	CID 196857: Out-of-bounds write (OVERRUN)
+		 *
+		 * It is actually a false positive:
+		 * Although 'args' is  constant, Coverity is unable
+		 * to infer there are enough NULL elements in 'args'
+		 * to add the following options.
+		 */
+#if HAVE_USR_SBIN_PPPD
+		if (tunnel->config->pppd_use_peerdns)
+			args[i++] = "usepeerdns";
+		if (tunnel->config->pppd_log) {
+			args[i++] = "debug";
+			args[i++] = "logfile";
+			args[i++] = tunnel->config->pppd_log;
+		}
+		if (tunnel->config->pppd_plugin) {
+			args[i++] = "plugin";
+			args[i++] = tunnel->config->pppd_plugin;
+		}
+		if (tunnel->config->pppd_ifname) {
+			args[i++] = "ifname";
+			args[i++] = tunnel->config->pppd_ifname;
+		}
+#endif
+		if (tunnel->config->pppd_ipparam) {
+			args[i++] = tunnel->config->pppd_ipparam;
+		}
+
+		// Assert that we didn't use up all NULL pointers above
+		assert(i < ARRAY_SIZE(args));
+		close(tunnel->ssl_socket);
+		execv(args[0], (char *const *)args);
+
 		/*
 		 * The following call to fprintf() doesn't work, probably
 		 * because of the prior call to forkpty().
@@ -270,19 +267,11 @@ static const char * const pppd_message[] = {
 
 static int pppd_terminate(struct tunnel *tunnel)
 {
-	int has_pppd = 1;
+#if HAVE_USR_SBIN_PPPD
 	char pppd_name[] = "pppd";
-	static const char pppd_path[] = "/usr/sbin/pppd";
-	static const char ppp_path[] = "/usr/sbin/ppp";
-	if (access(pppd_path, F_OK) != 0) {
-		// try ppp instead, this is the case on FreeBSD
-		if (access(ppp_path, F_OK) != 0) {
-			log_error("%s: %s.\n", ppp_path, strerror(errno));
-			return 1;
-		}
-		has_pppd = 0;
-		pppd_name[3] = '\0';
-	}
+#else
+	char pppd_name[] = "ppp";
+#endif
 	close(tunnel->pppd_pty);
 
 	log_debug("Waiting for %s to exit...\n", pppd_name);
@@ -296,42 +285,43 @@ static int pppd_terminate(struct tunnel *tunnel)
 		int exit_status = WEXITSTATUS(status);
 		log_debug("waitpid: %s exit status code %d\n",
 		          pppd_name, exit_status);
-		if (has_pppd) {
-			if (exit_status >= ARRAY_SIZE(pppd_message) || exit_status < 0) {
-				log_error("pppd: Returned an unknown exit status: %d\n",
-				          exit_status);
-			} else {
-				switch (exit_status) {
-				case 0: // success
-					log_debug("pppd: %s\n",
-					          pppd_message[exit_status]);
-					break;
-				case 16: // emitted when exiting normally
-					log_info("pppd: %s\n",
-					         pppd_message[exit_status]);
-					break;
-				default:
-					log_error("pppd: %s\n",
-					          pppd_message[exit_status]);
-					break;
-				}
-			}
-		} else { // ppp exit codes in the FreeBSD case
+#if HAVE_USR_SBIN_PPPD
+		if (exit_status >= ARRAY_SIZE(pppd_message) || exit_status < 0) {
+			log_error("pppd: Returned an unknown exit status: %d\n",
+			          exit_status);
+		} else {
 			switch (exit_status) {
-			case 0: // success and EX_NORMAL as defined in ppp source directly
-				log_debug("ppp: %s\n", pppd_message[exit_status]);
+			case 0: // success
+				log_debug("pppd: %s\n",
+				          pppd_message[exit_status]);
 				break;
-			case 1:
-			case 127:
-			case 255: // abnormal exit with hard-coded error codes in ppp
-				log_error("ppp: exited with return value of %d\n",
-				          exit_status);
+			case 16: // emitted when exiting normally
+				log_info("pppd: %s\n",
+				         pppd_message[exit_status]);
 				break;
 			default:
-				log_error("ppp: %s\n", strerror(exit_status));
+				log_error("pppd: %s\n",
+				          pppd_message[exit_status]);
 				break;
 			}
 		}
+#else
+		// ppp exit codes in the FreeBSD case
+		switch (exit_status) {
+		case 0: // success and EX_NORMAL as defined in ppp source directly
+			log_debug("ppp: %s\n", pppd_message[exit_status]);
+			break;
+		case 1:
+		case 127:
+		case 255: // abnormal exit with hard-coded error codes in ppp
+			log_error("ppp: exited with return value of %d\n",
+			          exit_status);
+			break;
+		default:
+			log_error("ppp: %s\n", strerror(exit_status));
+			break;
+		}
+#endif
 	} else if (WIFSIGNALED(status)) {
 		int signal_number = WTERMSIG(status);
 		log_debug("waitpid: %s terminated by signal %d\n",
