@@ -23,10 +23,16 @@ AC_CHECK_LIB([pthread], [pthread_create], [], [AC_MSG_ERROR([Cannot find libpthr
 AC_CHECK_LIB([util], [forkpty], [], [AC_MSG_ERROR([Cannot find libutil.])])
 
 # Checks for header files.
-AC_CHECK_HEADERS([arpa/inet.h assert.h ctype.h errno.h fcntl.h getopt.h ifaddrs.h limits.h netdb.h net/if.h netinet/in.h netinet/tcp.h net/route.h pthread.h signal.h stdarg.h stdint.h stdio.h stdlib.h string.h sys/ioctl.h syslog.h sys/socket.h sys/stat.h sys/types.h sys/wait.h termios.h unistd.h], [], AC_MSG_ERROR([Required header not found]))
+AC_CHECK_HEADERS([arpa/inet.h assert.h ctype.h errno.h fcntl.h getopt.h ifaddrs.h limits.h netdb.h net/if.h netinet/in.h netinet/tcp.h pthread.h signal.h stdarg.h stdint.h stdio.h stdlib.h string.h sys/ioctl.h syslog.h sys/socket.h sys/stat.h sys/types.h sys/wait.h termios.h unistd.h], [], AC_MSG_ERROR([Required header not found]))
+
+# Checks for header files with prerequisites of other headers.
+AC_CHECK_HEADERS([net/route.h], [], AC_MSG_ERROR([Required header not found]), [#include <net/if.h>])
 
 # Checks for optional header files.
-AC_CHECK_HEADERS([libutil.h mach/mach.h net/if_var.h pty.h semaphore.h sys/mutex.h util.h])
+AC_CHECK_HEADERS([libutil.h mach/mach.h pty.h semaphore.h sys/mutex.h util.h])
+
+# Checks for optional header files with prerequisites of other headers.
+AC_CHECK_HEADERS([net/if_var.h],[],[],[#include <net/if.h>])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_C_INLINE
