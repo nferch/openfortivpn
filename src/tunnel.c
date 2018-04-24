@@ -112,11 +112,8 @@ static int pppd_run(struct tunnel *tunnel)
 	};
 #endif
 
-
-	// traditional behavior based on pppd
 	static const char pppd_path[] = "/usr/sbin/pppd";
 	static const char ppp_path[] = "/usr/sbin/ppp";
-
 	if (access(pppd_path, F_OK) != 0) {
 		// try ppp instead, this is the case on FreeBSD
 		if (access(ppp_path, F_OK) != 0) {
@@ -273,9 +270,23 @@ static const char * const pppd_message[] = {
 
 static int pppd_terminate(struct tunnel *tunnel)
 {
+	int has_pppd = 1;
+	char pppd_name[] = "pppd";
+	static const char pppd_path[] = "/usr/sbin/pppd";
+	static const char ppp_path[] = "/usr/sbin/ppp";
+	if (access(pppd_path, F_OK) != 0) {
+		// try ppp instead, this is the case on FreeBSD
+		if (access(ppp_path, F_OK) != 0) {
+			log_error("%s: %s.\n", ppp_path, strerror(errno));
+			return 1;
+		}
+		has_pppd = 0;
+		pppd_name[3] = '\0';
+	}
 	close(tunnel->pppd_pty);
 
-	log_debug("Waiting for pppd to exit...\n");
+	log_debug("Waiting for %s to exit...\n", pppd_name);
+
 	int status;
 	if (waitpid(tunnel->pppd_pid, &status, 0) == -1) {
 		log_error("waitpid: %s\n", strerror(errno));
@@ -283,28 +294,50 @@ static int pppd_terminate(struct tunnel *tunnel)
 	}
 	if (WIFEXITED(status)) {
 		int exit_status = WEXITSTATUS(status);
-		log_debug("waitpid: pppd exit status code %d\n", exit_status);
-		if (exit_status >= ARRAY_SIZE(pppd_message) || exit_status < 0)
-			log_error("pppd: Returned an unknown exit status: %d\n",
-			          exit_status);
-		else
+		log_debug("waitpid: %s exit status code %d\n",
+		          pppd_name, exit_status);
+		if (has_pppd) {
+			if (exit_status >= ARRAY_SIZE(pppd_message) || exit_status < 0) {
+				log_error("pppd: Returned an unknown exit status: %d\n",
+				          exit_status);
+			} else {
+				switch (exit_status) {
+				case 0: // success
+					log_debug("pppd: %s\n",
+					          pppd_message[exit_status]);
+					break;
+				case 16: // emitted when exiting normally
+					log_info("pppd: %s\n",
+					         pppd_message[exit_status]);
+					break;
+				default:
+					log_error("pppd: %s\n",
+					          pppd_message[exit_status]);
+					break;
+				}
+			}
+		} else { // ppp exit codes in the FreeBSD case
 			switch (exit_status) {
-			case 0: // success
-				log_debug("pppd: %s\n", pppd_message[exit_status]);
+			case 0: // success and EX_NORMAL as defined in ppp source directly
+				log_debug("ppp: %s\n", pppd_message[exit_status]);
 				break;
-			case 16: // emitted when exiting normally
-				log_info("pppd: %s\n", pppd_message[exit_status]);
+			case 1:
+			case 127:
+			case 255: // abnormal exit with hard-coded error codes in ppp
+				log_error("ppp: exited with return value of %d\n",
+				          exit_status);
 				break;
 			default:
-				log_error("pppd: %s\n", pppd_message[exit_status]);
+				log_error("ppp: %s\n", strerror(exit_status));
 				break;
 			}
+		}
 	} else if (WIFSIGNALED(status)) {
 		int signal_number = WTERMSIG(status);
-		log_debug("waitpid: pppd terminated by signal %d\n",
-		          signal_number);
-		log_error("pppd: terminated by signal: %s\n",
-		          strsignal(signal_number));
+		log_debug("waitpid: %s terminated by signal %d\n",
+		          pppd_name, signal_number);
+		log_error("%s: terminated by signal: %s\n",
+		          pppd_name, strsignal(signal_number));
 	}
 
 	return 0;
