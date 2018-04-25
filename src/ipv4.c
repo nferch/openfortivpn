@@ -618,6 +618,8 @@ err_destroy:
 	return ret;
 }
 
+
+#if HAVE_USR_SBIN_PPPD
 static void add_text_route(struct tunnel *tunnel, const char *dest,
                            const char *mask, const char *gw)
 {
@@ -641,6 +643,7 @@ static void add_text_route(struct tunnel *tunnel, const char *dest,
 		log_error("realloc: %s\n", strerror(errno));
 	}
 }
+#endif
 
 int ipv4_add_split_vpn_route(struct tunnel *tunnel, char *dest, char *mask,
                              char *gateway)
@@ -648,7 +651,9 @@ int ipv4_add_split_vpn_route(struct tunnel *tunnel, char *dest, char *mask,
 	struct rtentry *route;
 	char env_var[24];
 
+#if HAVE_USR_SBIN_PPPD
 	add_text_route(tunnel, dest, mask, gateway);
+#endif
 	if (tunnel->ipv4.split_routes == MAX_SPLIT_ROUTES)
 		return ERR_IPV4_NO_MEM;
 	if ((tunnel->ipv4.split_rt == NULL)

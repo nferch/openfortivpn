@@ -208,6 +208,7 @@ int load_config(struct vpn_config *cfg, const char *filename)
 				continue;
 			}
 			cfg->persistent = persistent;
+#if HAVE_USR_SBIN_PPPD
 		} else if (strcmp(key, "pppd-use-peerdns") == 0) {
 			int pppd_use_peerdns = strtob(val);
 			if (pppd_use_peerdns < 0) {
@@ -226,6 +227,16 @@ int load_config(struct vpn_config *cfg, const char *filename)
 			cfg->pppd_ifname = strdup(val);
 		} else if (strcmp(key, "pppd-call") == 0) {
 			cfg->pppd_call = strdup(val);
+#else
+		} else if (strcmp(key, "pppd") == 0) {
+			log_warn("Ignoring pppd option \"%s\".\n", key);
+#endif
+		} else if (strcmp(key, "ppp-system") == 0) {
+#if HAVE_USR_SBIN_PPP
+			cfg->ppp_system = strdup(val);
+#else
+			log_warn("Ignoring option \"%s\".\n", key);
+#endif
 		} else if (strcmp(key, "use-syslog") == 0) {
 			int use_syslog = strtob(val);
 			if (use_syslog < 0) {

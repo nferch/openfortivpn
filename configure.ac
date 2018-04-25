@@ -72,6 +72,9 @@ int main() {
   AC_MSG_RESULT(yes)
 ], AC_MSG_RESULT(no) )
 
+with_ppp=no
+with_pppd=no
+
 # Checks for existence of specific files.
 NETSTAT_PATH=
 AC_CHECK_FILE(/proc/net/route,[
@@ -123,6 +126,10 @@ AC_ARG_ENABLE([proc],
 	AS_HELP_STRING([--enable-proc],
 			[Enable route manipulations directly via /proc/net/route when cross-compiling]))
 
+# assume the previous behavior for travis
+AS_IF([test "x$with_ppp" = "xno" -a "x$with_pppd" = "xno"], [
+   with_pppd=yes
+])
 
 AS_IF([test "x$with_ppp" = "xyes"], [
 	AC_DEFINE(HAVE_USR_SBIN_PPP)

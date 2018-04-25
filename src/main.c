@@ -27,14 +27,40 @@
 #include <string.h>
 #include <limits.h>
 
+#if HAVE_USR_SBIN_PPPD
+#define PPPD_USAGE \
+"                    [--pppd-no-peerdns] [--pppd-log=<file>]\n" \
+"                    [--pppd-ifname=<string>] [--pppd-ipparam=<string>]\n" \
+"                    [--pppd-call=<name>] [--pppd-plugin=<file>]\n"
+
+#define PPPD_HELP \
+"  --pppd-no-peerdns             Do not ask peer ppp server for DNS server addresses\n" \
+"                                and do not make pppd rewrite /etc/resolv.conf\n" \
+"  --pppd-log=<file>             Set pppd in debug mode and save its logs into\n" \
+"                                <file>.\n" \
+"  --pppd-plugin=<file>          Use specified pppd plugin instead of configuring\n" \
+"                                resolver and routes directly.\n" \
+"  --pppd-ifname=<string>        Set the pppd interface name, if supported by pppd.\n" \
+"  --pppd-ipparam=<string>       Provides  an extra parameter to the ip-up, ip-pre-up\n" \
+"                                and ip-down scripts. See man (8) pppd\n" \
+"  --pppd-call=<name>            Move most pppd options from pppd cmdline to\n" \
+"                                /etc/ppp/peers/<name> and invoke pppd with\n" \
+"                                'call <name>'\n"
+#endif
+#if HAVE_USR_SBIN_PPP
+#define PPPD_USAGE \
+"                    [--ppp-system=<system>]\n"
+#define PPPD_HELP \
+"  --ppp-system=<system>         connect to the specified system as defined in\n" \
+"                                /etc/ppp/ppp.conf\n"
+#endif
+
 #define usage \
 "Usage: openfortivpn [<host>:<port>] [-u <user>] [-p <pass>]\n" \
 "                    [--realm=<realm>] [--otp=<otp>] [--set-routes=<0|1>]\n" \
 "                    [--half-internet-routes=<0|1>] [--set-dns=<0|1>]\n" \
-"                    [--pppd-no-peerdns] [--pppd-log=<file>]\n" \
-"                    [--pppd-ifname=<string>] [--pppd-ipparam=<string>]\n" \
-"                    [--pppd-call=<name>]\n" \
-"                    [--pppd-plugin=<file>] [--ca-file=<file>]\n" \
+PPPD_USAGE \
+"                    [--ca-file=<file>]\n" \
 "                    [--user-cert=<file>] [--user-key=<file>]\n" \
 "                    [--trusted-cert=<digest>] [--use-syslog]\n" \
 "                    [--persistent=<interval>] [-c <file>] [-v|-q]\n" \
@@ -48,6 +74,7 @@
 "<host>:<port>. It spawns a pppd process and operates the communication between\n" \
 "the gateway and this process.\n" \
 "\n"
+
 
 #define help_options \
 "Options:\n" \
@@ -63,7 +90,7 @@
 "  --set-routes=[01]             Set if we should configure output roues through\n" \
 "                                the VPN when tunnel is up.\n" \
 "  --no-routes                   Do not configure routes, same as --set-routes=0.\n" \
-"  --half-internet-routes=[01]   Add two 0.0.0.0/1 and 128.0.0.0/1 routes with higher" \
+"  --half-internet-routes=[01]   Add two 0.0.0.0/1 and 128.0.0.0/1 routes with higher\n" \
 "                                priority instead of replacing the default route.\n" \
 "  --set-dns=[01]                Set if we should add VPN name servers in\n" \
 "                                /etc/resolv.conf\n" \
@@ -89,18 +116,7 @@
 "                                you can try with the cipher suggested in the output\n" \
 "                                of 'openssl s_client -connect <host:port>'\n" \
 "                                (e.g. AES256-GCM-SHA384)\n" \
-"  --pppd-no-peerdns             Do not ask peer ppp server for DNS server addresses\n" \
-"                                and do not make pppd rewrite /etc/resolv.conf\n" \
-"  --pppd-log=<file>             Set pppd in debug mode and save its logs into\n" \
-"                                <file>.\n" \
-"  --pppd-plugin=<file>          Use specified pppd plugin instead of configuring\n" \
-"                                resolver and routes directly.\n" \
-"  --pppd-ifname=<string>        Set the pppd interface name, if supported by pppd.\n" \
-"  --pppd-ipparam=<string>       Provides  an extra parameter to the ip-up, ip-pre-up\n" \
-"                                and ip-down scripts. See man (8) pppd\n" \
-"  --pppd-call=<name>            Move most pppd options from pppd cmdline to\n" \
-"                                /etc/ppp/peers/<name> and invoke pppd with\n" \
-"                                'call <name>'\n" \
+PPPD_HELP \
 "  --persistent=<interval>       Run the vpn persistently in a loop and try to re-\n" \
 "                                connect every <interval> seconds when dropping out\n" \
 "  -v                            Increase verbosity. Can be used multiple times\n" \
@@ -137,9 +153,14 @@ static inline void destroy_vpn_config(struct vpn_config *cfg)
 	free(cfg->user_key);
 	free(cfg->user_cert);
 	free(cfg->ca_file);
+#if HAVE_USR_SBIN_PPPD
 	free(cfg->pppd_ipparam);
 	free(cfg->pppd_plugin);
 	free(cfg->pppd_log);
+#endif
+#if HAVE_USR_SBIN_PPP
+	free(cfg->ppp_system);
+#endif
 }
 
 int main(int argc, char **argv)
@@ -161,13 +182,18 @@ int main(int argc, char **argv)
 		.realm = {'\0'},
 		.set_routes = 1,
 		.set_dns = 1,
-		.pppd_use_peerdns = 1,
 		.use_syslog = 0,
 		.half_internet_routes = 0,
+#if HAVE_USR_SBIN_PPPD
+		.pppd_use_peerdns = 1,
 		.pppd_log = NULL,
 		.pppd_plugin = NULL,
 		.pppd_ipparam = NULL,
 		.pppd_call = NULL,
+#endif
+#if HAVE_USR_SBIN_PPP
+		.ppp_system = NULL,
+#endif
 		.ca_file = NULL,
 		.user_cert = NULL,
 		.user_key = NULL,
@@ -190,7 +216,6 @@ int main(int argc, char **argv)
 		{"half-internet-routes", required_argument, 0, 0},
 		{"set-dns",	    required_argument, 0, 0},
 		{"no-dns",          no_argument, &cfg.set_dns, 0},
-		{"pppd-no-peerdns", no_argument, &cfg.pppd_use_peerdns, 0},
 		{"use-syslog",      no_argument, &cfg.use_syslog, 1},
 		{"persistent",      required_argument, 0, 0},
 		{"ca-file",         required_argument, 0, 0},
@@ -199,12 +224,18 @@ int main(int argc, char **argv)
 		{"trusted-cert",    required_argument, 0, 0},
 		{"insecure-ssl",    no_argument, &cfg.insecure_ssl, 1},
 		{"cipher-list",     required_argument, 0, 0},
+#if HAVE_USR_SBIN_PPPD
+		{"pppd-no-peerdns", no_argument, &cfg.pppd_use_peerdns, 0},
 		{"pppd-log",        required_argument, 0, 0},
 		{"pppd-plugin",     required_argument, 0, 0},
 		{"pppd-ipparam",    required_argument, 0, 0},
 		{"pppd-ifname",     required_argument, 0, 0},
 		{"pppd-call",       required_argument, 0, 0},
 		{"plugin",          required_argument, 0, 0}, // deprecated
+#endif
+#if HAVE_USR_SBIN_PPP
+		{"ppp-syste,",      required_argument, 0, 0},
+#endif
 		{0, 0, 0, 0}
 	};
 
@@ -232,6 +263,7 @@ int main(int argc, char **argv)
 				ret = EXIT_SUCCESS;
 				goto exit;
 			}
+#if HAVE_USR_SBIN_PPPD
 			if (strcmp(long_options[option_index].name,
 			           "pppd-log") == 0) {
 				cfg.pppd_log = strdup(optarg);
@@ -264,6 +296,14 @@ int main(int argc, char **argv)
 				cfg.pppd_plugin = strdup(optarg);
 				break;
 			}
+#endif
+#if HAVE_USR_SBIN_PPP
+			if (strcmp(long_options[option_index].name,
+			           "ppp-system") == 0) {
+				cfg.ppp_system = strdup(optarg);
+				break;
+			}
+#endif
 			if (strcmp(long_options[option_index].name,
 			           "ca-file") == 0) {
 				cfg.ca_file = strdup(optarg);

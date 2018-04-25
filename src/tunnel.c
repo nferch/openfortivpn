@@ -166,6 +166,7 @@ static int pppd_run(struct tunnel *tunnel)
 		};
 #endif
 
+#if HAVE_USR_SBIN_PPPD
 		if (tunnel->config->pppd_call) {
 			/* overwrite args[]: keep ppp_path, replace all
 			 * options with "call <name>" */
@@ -175,7 +176,7 @@ static int pppd_run(struct tunnel *tunnel)
 			while (j < ARRAY_SIZE(args))
 				args[j++] = NULL;
 		}
-
+#endif
 		// Dynamically get first NULL pointer so that changes of
 		// args above don't need code changes here
 		int i = ARRAY_SIZE(args) - 1;
@@ -208,10 +209,15 @@ static int pppd_run(struct tunnel *tunnel)
 			args[i++] = "ifname";
 			args[i++] = tunnel->config->pppd_ifname;
 		}
-#endif
 		if (tunnel->config->pppd_ipparam) {
 			args[i++] = tunnel->config->pppd_ipparam;
 		}
+#endif
+#if HAVE_USR_SBIN_PPP
+		if (tunnel->config->ppp_system) {
+			args[i++] = tunnel->config->ppp_system;
+		}
+#endif
 
 		// Assert that we didn't use up all NULL pointers above
 		assert(i < ARRAY_SIZE(args));
@@ -345,9 +351,13 @@ int ppp_interface_is_up(struct tunnel *tunnel)
 	}
 
 	for (ifa = ifap; ifa != NULL; ifa = ifa->ifa_next) {
-		if (((tunnel->config->pppd_ifname
-		      && strstr(ifa->ifa_name, tunnel->config->pppd_ifname) != NULL)
-		     || strstr(ifa->ifa_name, "ppp") != NULL)
+		if ((
+#if HAVE_USR_SBIN_PPPD
+		            (tunnel->config->pppd_ifname
+		             && strstr(ifa->ifa_name, tunnel->config->pppd_ifname)
+		             != NULL) ||
+#endif
+		            strstr(ifa->ifa_name, "ppp") != NULL)
 		    && ifa->ifa_flags & IFF_UP) {
 			if (&(ifa->ifa_addr->sa_family) != NULL
 			    && ifa->ifa_addr->sa_family == AF_INET) {
