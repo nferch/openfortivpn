@@ -150,4 +150,5 @@ AS_IF([test "x$enable_proc" = "xyes"], [
 AC_SUBST(PPP_PATH)
 AC_SUBST(NETSTAT_PATH)
 
+AC_CONFIG_COMMANDS([timestamp], [touch src/.dirstamp])
 AC_OUTPUT(Makefile)
