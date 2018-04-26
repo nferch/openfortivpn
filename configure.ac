@@ -108,7 +108,9 @@ AC_ARG_WITH([netstat],
 AC_ARG_WITH([pppd],
         AS_HELP_STRING([--with-pppd],
                        [Set the path to the pppd daemon executable]),
-        PPP_PATH="$withval"
+        AS_IF([test ! "x$with_pppd" = "xno" -a ! "x$with_pppd" = "xyes"],[
+		PPP_PATH="$withval"
+	])
 	with_pppd=yes
 	with_ppp=no
 )
@@ -116,7 +118,9 @@ AC_ARG_WITH([pppd],
 AC_ARG_WITH([ppp],
         AS_HELP_STRING([--with-ppp],
                        [Set the path to the ppp userspace client on FreeBSD]),
-        PPP_PATH="$withval"
+        AS_IF([test ! "x$with_ppp" = "xno" -a ! "x$with_ppp" = "xyes"],[
+		PPP_PATH="$withval"
+	])
 	with_ppp=yes
 	with_pppd=no
 )

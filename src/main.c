@@ -234,7 +234,7 @@ int main(int argc, char **argv)
 		{"plugin",          required_argument, 0, 0}, // deprecated
 #endif
 #if HAVE_USR_SBIN_PPP
-		{"ppp-syste,",      required_argument, 0, 0},
+		{"ppp-system",      required_argument, 0, 0},
 #endif
 		{0, 0, 0, 0}
 	};

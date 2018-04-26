@@ -326,7 +326,7 @@ static int pppd_terminate(struct tunnel *tunnel)
 			          exit_status);
 			break;
 		default:
-			log_error("ppp: %s\n", strerror(exit_status));
+			log_error("ppp: %s (%d)\n", strerror(exit_status), exit_status);
 			break;
 		}
 #endif
@@ -837,11 +837,13 @@ int run_tunnel(struct vpn_config *config)
 	};
 
 	// Step 0: get gateway host IP
+	log_debug("Resolving gateway host ip\n");
 	ret = get_gateway_host_ip(&tunnel);
 	if (ret)
 		goto err_tunnel;
 
 	// Step 1: open a SSL connection to the gateway
+	log_debug("Establishing ssl connection\n");
 	ret = ssl_connect(&tunnel);
 	if (ret)
 		goto err_tunnel;
@@ -873,6 +875,7 @@ int run_tunnel(struct vpn_config *config)
 		goto err_tunnel;
 
 	// Step 3: get configuration
+	log_debug("Retrieving configuration\n");
 	ret = auth_get_config(&tunnel);
 	if (ret != 1) {
 		log_error("Could not get VPN configuration (%s).\n",
@@ -882,11 +885,13 @@ int run_tunnel(struct vpn_config *config)
 	}
 
 	// Step 4: run a pppd process
+	log_debug("Establishing the tunnel\n");
 	ret = pppd_run(&tunnel);
 	if (ret)
 		goto err_tunnel;
 
 	// Step 5: ask gateway to start tunneling
+	log_debug("Switch to tunneling mode\n");
 	ret = http_send(&tunnel,
 	                "GET /remote/sslvpn-tunnel HTTP/1.1\r\n"
 	                "Host: sslvpn\r\n"
@@ -902,8 +907,10 @@ int run_tunnel(struct vpn_config *config)
 	ret = 0;
 
 	// Step 6: perform io between pppd and the gateway, while tunnel is up
+	log_debug("Starting IO through the tunnel\n");
 	io_loop(&tunnel);
 
+	log_debug("disconnecting\n");
 	if (tunnel.state == STATE_UP)
 		if (tunnel.on_ppp_if_down != NULL)
 			tunnel.on_ppp_if_down(&tunnel);
