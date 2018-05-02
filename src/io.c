@@ -39,7 +39,7 @@
 #include <string.h>
 #include <errno.h>
 
-#ifdef HAVE_MACH_MACH_H
+#if HAVE_MACH_MACH_H
 /* this is typical for mach kernel used on Mac OSX */
 #include <mach/mach.h>
 
@@ -606,7 +606,7 @@ int io_loop(struct tunnel *tunnel)
 	}
 
 // on osx this prevents the program from being stopped with ctrl-c
-#ifndef __APPLE__
+#if HAVE_MACH_MACH_H
 	// Disable SIGINT and SIGTERM for the future spawned threads
 	sigset_t sigset, oldset;
 	sigemptyset(&sigset);
@@ -635,7 +635,7 @@ int io_loop(struct tunnel *tunnel)
 	if (pthread_create(&if_config_thread, NULL, if_config, tunnel))
 		goto err_thread;
 
-#ifndef __APPLE__
+#if HAVE_MACH_MACH_H
 	// Restore the signal for the main thread
 	pthread_sigmask(SIG_SETMASK, &oldset, NULL);
 #endif

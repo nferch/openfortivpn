@@ -824,6 +824,11 @@ int ssl_connect(struct tunnel *tunnel)
 
 int run_tunnel(struct vpn_config *config)
 {
+#if HAVE_USR_SBIN_PPPD
+	char pppd_name[] = "pppd";
+#else
+	char pppd_name[] = "ppp";
+#endif
 	int ret;
 	struct tunnel tunnel = {
 		.config = config,
@@ -919,7 +924,7 @@ int run_tunnel(struct vpn_config *config)
 
 err_start_tunnel:
 	pppd_terminate(&tunnel);
-	log_info("Terminated pppd.\n");
+	log_info("Terminated %s.\n", pppd_name);
 err_tunnel:
 	log_info("Closed connection to gateway.\n");
 	tunnel.state = STATE_DOWN;

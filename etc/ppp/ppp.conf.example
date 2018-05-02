@@ -5,6 +5,8 @@
 vpn-client: 
  set device vpnhost.example.com:443
  set dial
+ set speed 38400
+ set mru 1354
  set login
  set ifaddr 192.0.2.2 192.0.2.1 255.255.255.0 
  disable deflate pred1 
