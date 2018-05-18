@@ -11,7 +11,7 @@ openfortivpn_CPPFLAGS = -DSYSCONFDIR=\"$(sysconfdir)\" \
 			-DPPP_PATH=\"@PPP_PATH@\" \
 			-DNETSTAT_PATH=\"@NETSTAT_PATH@\"
 
-openfortivpn_CFLAGS += $(OPENSSL_CFLAGS)
+openfortivpn_CPPFLAGS += $(OPENSSL_CFLAGS)
 openfortivpn_LDADD = $(OPENSSL_LIBS)
 
 DISTCHECK_CONFIGURE_FLAGS = CFLAGS=-Werror
