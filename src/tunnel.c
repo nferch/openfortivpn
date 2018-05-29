@@ -167,7 +167,7 @@ static int pppd_run(struct tunnel *tunnel)
 		*/
 		const char *v[] = {
 			ppp_path,
-			"-background"
+			"-direct"
 		};
 		for (unsigned i = 0; i < sizeof v/sizeof v[0]; i++)
 			ofv_append_varr(&pppd_args, v[i]);
