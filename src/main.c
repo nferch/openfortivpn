@@ -87,14 +87,13 @@ PPPD_USAGE \
 "  -o <otp>, --otp=<otp>         One-Time-Password.\n" \
 "  --realm=<realm>               Use specified authentication realm on VPN gateway\n" \
 "                                when tunnel is up.\n" \
-"  --set-routes=[01]             Set if we should configure output roues through\n" \
+"  --set-routes=[01]             Set if openfortivpn should configure output roues through\n" \
 "                                the VPN when tunnel is up.\n" \
 "  --no-routes                   Do not configure routes, same as --set-routes=0.\n" \
 "  --half-internet-routes=[01]   Add two 0.0.0.0/1 and 128.0.0.0/1 routes with higher\n" \
 "                                priority instead of replacing the default route.\n" \
-"  --set-dns=[01]                Set if we should add VPN name servers in\n" \
+"  --set-dns=[01]                Set if openfortivpn should add VPN name servers in\n" \
 "                                /etc/resolv.conf\n" \
-"  --no-dns                      Do not reconfigure DNS, same as --set-dns=0\n" \
 "  --ca-file=<file>              Use specified PEM-encoded certificate bundle\n" \
 "                                instead of system-wide store to verify the gateway\n" \
 "                                certificate.\n" \
@@ -181,7 +180,8 @@ int main(int argc, char **argv)
 		.cookie = {'\0'},
 		.realm = {'\0'},
 		.set_routes = 1,
-		.set_dns = 1,
+		.set_dns = 0,
+		.pppd_use_peerdns = 1,
 		.use_syslog = 0,
 		.half_internet_routes = 0,
 #if HAVE_USR_SBIN_PPPD
@@ -214,8 +214,8 @@ int main(int argc, char **argv)
 		{"set-routes",	    required_argument, 0, 0},
 		{"no-routes",       no_argument, &cfg.set_routes, 0},
 		{"half-internet-routes", required_argument, 0, 0},
-		{"set-dns",	    required_argument, 0, 0},
-		{"no-dns",          no_argument, &cfg.set_dns, 0},
+		{"set-dns",         required_argument, 0, 0},
+		{"pppd-no-peerdns", no_argument, &cfg.pppd_use_peerdns, 0},
 		{"use-syslog",      no_argument, &cfg.use_syslog, 1},
 		{"persistent",      required_argument, 0, 0},
 		{"ca-file",         required_argument, 0, 0},
