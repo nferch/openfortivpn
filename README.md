@@ -25,7 +25,7 @@ Examples
 
 * Don't set IP routes and don't add VPN nameservers to `/etc/resolv.conf`:
   ```
-  openfortivpn vpn-gateway:8443 -u foo -p bar --no-routes --pppd-no-peerdns
+  openfortivpn vpn-gateway:8443 -u foo -p bar --no-routes --no-dns --pppd-no-peerdns
   ```
 * Using a config file:
   ```
@@ -39,6 +39,7 @@ Examples
   username = foo
   password = bar
   set-routes = 0
+  set-dns = 0
   pppd-use-peerdns = 0
   # X509 certificate sha256 sum, trust only this one!
   trusted-cert = e46d4aff08ba6914e64daa85bc6112a422fa7ce16631bff0b592a28556f993db
@@ -76,7 +77,11 @@ For other distros, you'll need to build and install from source:
     /usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
 
     # Install Dependencies
-    brew install automake autoconf openssl@1.0
+    brew install automake autoconf openssl@1.0 pkg-config
+
+    # You may need to make this openssl available to compilers
+    export LDFLAGS="-L/usr/local/opt/openssl/lib $LDFLAGS"
+    export CPPFLAGS="-I/usr/local/opt/openssl/include $CPPFLAGS"
     ```
 
     On macOS, install 'openfortivpn'...
