@@ -253,8 +253,8 @@ static void *pppd_read(void *arg)
 			packet = repacket;
 			packet->len = pktsize;
 
-			log_debug("pppd ---> gateway (%d bytes)\n", packet->len);
-			log_packet("pppd:   ", packet->len, pkt_data(packet));
+			log_debug("ppp ---> gateway (%d bytes)\n", packet->len);
+			log_packet("ppp:   ", packet->len, pkt_data(packet));
 			pool_push(&tunnel->pty_to_ssl_pool, packet);
 
 			off_r += frm_len;
@@ -453,7 +453,7 @@ static void *ssl_read(void *arg)
 			goto exit;
 		}
 
-		log_debug("gateway ---> pppd (%d bytes)\n", packet->len);
+		log_debug("gateway ---> ppp (%d bytes)\n", packet->len);
 		log_packet("gtw:    ", packet->len, pkt_data(packet));
 		pool_push(&tunnel->ssl_to_pty_pool, packet);
 
