@@ -175,19 +175,11 @@ static os_semaphore_t sem_stop_io;
  */
 static void *pppd_read(void *arg)
 {
-#if HAVE_USR_SBIN_PPPD
-	char pppd_name[] = "pppd";
-#else
-	char pppd_name[] = "ppp";
-#endif
-	char prefix_buffer[32];
 	struct tunnel *tunnel = (struct tunnel *) arg;
 	uint8_t buf[PKT_BUF_SZ];
 	int first_time = 1;
 	off_t off_r, off_w;
 	fd_set read_fd;
-
-	snprintf(prefix_buffer, 32, "%s:   ", pppd_name);
 
 	FD_ZERO(&read_fd);
 	FD_SET(tunnel->pppd_pty, &read_fd);
@@ -261,8 +253,8 @@ static void *pppd_read(void *arg)
 			packet = repacket;
 			packet->len = pktsize;
 
-			log_debug("%s ---> gateway (%d bytes)\n", pppd_name, packet->len);
-			log_packet(prefix_buffer, packet->len, pkt_data(packet));
+			log_debug("pppd ---> gateway (%d bytes)\n", packet->len);
+			log_packet("pppd:   ", packet->len, pkt_data(packet));
 			pool_push(&tunnel->pty_to_ssl_pool, packet);
 
 			off_r += frm_len;
@@ -417,11 +409,6 @@ static void debug_bad_packet(struct tunnel *tunnel, uint8_t *header)
  */
 static void *ssl_read(void *arg)
 {
-#if HAVE_USR_SBIN_PPPD
-	char pppd_name[] = "pppd";
-#else
-	char pppd_name[] = "ppp";
-#endif
 	struct tunnel *tunnel = (struct tunnel *) arg;
 	//uint8_t buf[PKT_BUF_SZ];
 
@@ -466,7 +453,7 @@ static void *ssl_read(void *arg)
 			goto exit;
 		}
 
-		log_debug("gateway ---> %s (%d bytes)\n", pppd_name, packet->len);
+		log_debug("gateway ---> pppd (%d bytes)\n", packet->len);
 		log_packet("gtw:    ", packet->len, pkt_data(packet));
 		pool_push(&tunnel->ssl_to_pty_pool, packet);
 
