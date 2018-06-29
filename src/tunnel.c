@@ -48,9 +48,6 @@
 #include <util.h>
 #endif
 #include <termios.h>
-#if HAVE_LIBUTIL_H
-#include <libutil.h>
-#endif
 #include <signal.h>
 #include <sys/wait.h>
 #include <assert.h>
