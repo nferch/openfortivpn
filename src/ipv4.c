@@ -273,7 +273,7 @@ static int ipv4_get_route(struct rtentry *route)
 	}
 	start++;
 
-#if HAVE_PROC_NET_ROUTE
+#if !HAVE_PROC_NET_ROUTE
 	// Skip 3 more lines from netstat output on Mac OSX and on FreeBSD
 	start = index(start, '\n');
 	start = index(++start, '\n');
@@ -388,8 +388,10 @@ static int ipv4_get_route(struct rtentry *route)
 		// this is the reason for the 256 entries mentioned above
 		for (pos = 0; pos < strlen(tmpstr); pos++)
 			flags |= flag_table[(unsigned char)tmpstr[pos]];
+#ifndef __FreeBSD__
 		strtok_r(NULL, " ", &saveptr2); // "Refs"
 		strtok_r(NULL, " ", &saveptr2); // "Use"
+#endif
 		iface = strtok_r(NULL, " ", &saveptr2); // "Netif"
 		log_debug("- Interface: %s\n", iface);
 		log_debug("\n");

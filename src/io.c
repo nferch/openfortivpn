@@ -359,7 +359,11 @@ err_free_buf:
 	 && pkt_data(packet)[1] == 0x21 \
 	 && pkt_data(packet)[2] == 0x01 \
 	 && pkt_data(packet)[4] == 0x00 \
-	 && pkt_data(packet)[5] == 0x04)
+	 && pkt_data(packet)[5] == 0x04) || \
+	((packet)-> len == 12 \
+	 && pkt_data(packet)[0] == 0x80 \
+	 && pkt_data(packet)[1] == 0x21 \
+	 && pkt_data(packet)[2] == 0x02)
 
 static inline void set_tunnel_ips(struct tunnel *tunnel,
                                   struct ppp_packet *packet)
@@ -469,7 +473,9 @@ static void *ssl_read(void *arg)
 				strncat(line, inet_ntoa(tunnel->ipv4.ns2_addr), 15);
 				strcat(line, "]");
 				log_info("Got addresses: %s\n", line);
-			} else if (packet_is_end_negociation(packet)) {
+			}
+			if (packet_is_end_negociation(packet)) {
+				log_debug("got negotation\n");
 				SEM_POST(&sem_if_config);
 			}
 		}
